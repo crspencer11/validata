@@ -1,38 +1,62 @@
 import click
 import json
 import logging
-from src.engine import DataValidator
-from src.rules import PriceSpikeRule, MonotonicTimeRule
+from rich import print
+from rich.table import Table
+
+from .engine import DataValidator
+from .rules import PriceSpikeRule, MonotonicTimeRule
 
 logging.basicConfig(level=logging.INFO)
 
 @click.command()
-@click.option('--input', type=str, required=True, help='Path to the input JSON file containing financial data.')
-@click.option('--threshold', type=float, default=0.10, help='Threshold percentage for price spike validation.')
-@click.option('--repair', is_flag=True, help='Enable repair mode to suggest fixes for data issues.')
-def main(input, threshold, repair):
-    """Command-line interface for the Financial Data Validator."""
-    logging.info("Loading data from %s", input)
-    
+@click.option('--input', required=True, help='Input JSON file')
+@click.option('--threshold', default=0.10, help='Price spike threshold')
+@click.option('--repair', is_flag=True, help='Enable repair mode')
+@click.option('--output', type=str, help='Optional output file (JSON)')
+def main(input, threshold, repair, output):
     try:
         with open(input, 'r') as f:
             data = json.load(f)
     except Exception as e:
-        logging.error("Error loading data: %s", e)
+        print(f"[red]Failed to load file:[/red] {e}")
         return
 
-    rules = [PriceSpikeRule(threshold), MonotonicTimeRule()]
-    validator = DataValidator(rules)
+    rules = [
+        PriceSpikeRule(threshold),
+        MonotonicTimeRule()
+    ]
 
+    validator = DataValidator(rules, repair_mode=repair)
     result = validator.run(data)
-    logging.info("Validation result: %s", result)
 
-    if repair:
-        # Implement repair logic here
-        logging.info("Repair mode is enabled. Suggesting fixes...")
-        # Example: Call a repair function from repair.py
-        # repaired_data = repair_data(data)
-        # logging.info("Repaired data: %s", repaired_data)
+    # ---- Pretty output ----
+    print("\n[bold]Validation Summary[/bold]")
+    print(f"Status: {result.status}")
+    print(f"Violations: {result.violation_count}")
 
-if __name__ == '__main__':
-    main()
+    if result.violations:
+        table = Table(title="Violations")
+        table.add_column("Type")
+        table.add_column("Timestamp")
+        table.add_column("Detail")
+
+        for v in result.violations[:20]:
+            table.add_row(v.type, str(v.timestamp), v.detail)
+
+        print(table)
+
+    if repair and result.repaired_data:
+        print("\n[green]Repair applied[/green]")
+
+    # ---- Save output ----
+    if output:
+        with open(output, "w") as f:
+            json.dump({
+                "status": result.status,
+                "violation_count": result.violation_count,
+                "violations": [v.__dict__ for v in result.violations],
+                "repaired_data": result.repaired_data
+            }, f, indent=2)
+
+        print(f"\nSaved report to {output}")

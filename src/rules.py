@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import copy
 
 class ValidationRule(ABC):
     @abstractmethod
@@ -37,7 +38,7 @@ class MonotonicTimeRule(ValidationRule):
 
 class RepairablePriceSpikeRule(PriceSpikeRule):
     def repair(self, data: list[dict]) -> list[dict]:
-        repaired_data = data.copy()
+        repaired_data = copy.deepcopy(data)
         for i in range(1, len(repaired_data)):
             prev, curr = repaired_data[i-1]['price'], repaired_data[i]['price']
             change = abs(curr - prev) / prev
@@ -48,7 +49,7 @@ class RepairablePriceSpikeRule(PriceSpikeRule):
 
 class RepairableMonotonicTimeRule(MonotonicTimeRule):
     def repair(self, data: list[dict]) -> list[dict]:
-        repaired_data = data.copy()
+        repaired_data = copy.deepcopy(data)
         for i in range(1, len(repaired_data)):
             if repaired_data[i]['timestamp'] <= repaired_data[i-1]['timestamp']:
                 # Suggest a repair by incrementing the timestamp
