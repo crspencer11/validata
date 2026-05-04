@@ -42,13 +42,13 @@ def main(input, threshold, repair, output):
         table.add_column("Timestamp")
         table.add_column("Detail")
 
-        display = result.villations[:20]
+        display = result.violations[:20]
         for v in display:
             table.add_row(v.type, str(v.timestamp), v.detail)
 
         print(table)
 
-        if result.violation.count > 20:
+        if len(result.violations) > 20:
             print(f"[dim]...and {result.violation_count - 20} more (use --output to see all)[/dim]")
 
     if repair and result.repaired_data:
@@ -65,3 +65,6 @@ def main(input, threshold, repair, output):
             }, f, indent=2)
 
         print(f"\nSaved report to {output}")
+
+if __name__ == '__main__':
+    main()
