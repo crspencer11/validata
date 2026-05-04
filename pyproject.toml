@@ -1,0 +1,19 @@
+[project]
+name = "validata"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Chris Spencer"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "click (>=8.3.3,<9.0.0)",
+    "pytest (>=9.0.3,<10.0.0)",
+    "setuptools (>=82.0.1,<83.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
