@@ -74,13 +74,17 @@ class StatisticalOutlierRule(ValidationRule):
         self.z_threshold = z_threshold
 
     def validate(self, data):
+        if not data:
+            return []
+        
         prices = [d["price"] for d in data]
         mean = sum(prices) / len(prices)
-        std = (sum((p - mean) ** 2 for p in prices) / len(prices)) ** 0.5
+        variance = sum((p - mean) ** 2 for p in prices) / len(prices)
+        std = variance ** 0.5
 
         violations = []
         for d in data:
-            z = abs(d["price"] - mean) / std if std else 0
+            z = abs(d["price"] - mean) / std if std > 0 else 0
             if z > self.z_threshold:
                 violations.append({
                     "type": "STATISTICAL_OUTLIER",
