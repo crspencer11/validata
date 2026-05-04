@@ -5,7 +5,7 @@ from rich import print
 from rich.table import Table
 
 from .engine import DataValidator
-from .rules import PriceSpikeRule, MonotonicTimeRule
+from .rules import *
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,8 +23,9 @@ def main(input, threshold, repair, output):
         return
 
     rules = [
-        PriceSpikeRule(threshold),
-        MonotonicTimeRule()
+        PriceSpikeRule(threshold, enable_repair=repair),
+        MonotonicTimeRule(enable_repair=repair),
+        StatisticalOutlierRule(),
     ]
 
     validator = DataValidator(rules, repair_mode=repair)

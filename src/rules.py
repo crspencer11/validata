@@ -9,8 +9,6 @@ class ValidationRule(ABC):
 
     def repair(self, data: list[dict]) -> list[dict]:
         return data
-    
-import copy
 
 class PriceSpikeRule(ValidationRule):
     def __init__(self, threshold_percent=0.10, enable_repair=False):
@@ -43,8 +41,6 @@ class PriceSpikeRule(ValidationRule):
                 repaired[i]['price'] = (prev + curr) / 2
 
         return repaired
-    
-import copy
 
 class MonotonicTimeRule(ValidationRule):
     def __init__(self, enable_repair=False):
