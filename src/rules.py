@@ -7,11 +7,17 @@ class ValidationRule(ABC):
         """Returns a list of violation records."""
         pass
 
-class PriceSpikeRule(ValidationRule):
-    def __init__(self, threshold_percent=0.10):
-        self.threshold = threshold_percent
+    def repair(self, data: list[dict]) -> list[dict]:
+        return data
+    
+import copy
 
-    def validate(self, data: list[dict]) -> list[dict]:
+class PriceSpikeRule(ValidationRule):
+    def __init__(self, threshold_percent=0.10, enable_repair=False):
+        self.threshold = threshold_percent
+        self.enable_repair = enable_repair
+
+    def validate(self, data):
         violations = []
         for i in range(1, len(data)):
             prev, curr = data[i-1]['price'], data[i]['price']
@@ -24,8 +30,27 @@ class PriceSpikeRule(ValidationRule):
                 })
         return violations
 
+    def repair(self, data):
+        if not self.enable_repair:
+            return data
+
+        repaired = copy.deepcopy(data)
+
+        for i in range(1, len(repaired)):
+            prev, curr = repaired[i-1]['price'], repaired[i]['price']
+            change = abs(curr - prev) / prev
+            if change > self.threshold:
+                repaired[i]['price'] = (prev + curr) / 2
+
+        return repaired
+    
+import copy
+
 class MonotonicTimeRule(ValidationRule):
-    def validate(self, data: list[dict]) -> list[dict]:
+    def __init__(self, enable_repair=False):
+        self.enable_repair = enable_repair
+
+    def validate(self, data):
         violations = []
         for i in range(1, len(data)):
             if data[i]['timestamp'] <= data[i-1]['timestamp']:
@@ -36,22 +61,35 @@ class MonotonicTimeRule(ValidationRule):
                 })
         return violations
 
-class RepairablePriceSpikeRule(PriceSpikeRule):
-    def repair(self, data: list[dict]) -> list[dict]:
-        repaired_data = copy.deepcopy(data)
-        for i in range(1, len(repaired_data)):
-            prev, curr = repaired_data[i-1]['price'], repaired_data[i]['price']
-            change = abs(curr - prev) / prev
-            if change > self.threshold:
-                # Suggest a repair by averaging with the previous price
-                repaired_data[i]['price'] = (prev + curr) / 2
-        return repaired_data
+    def repair(self, data):
+        if not self.enable_repair:
+            return data
 
-class RepairableMonotonicTimeRule(MonotonicTimeRule):
-    def repair(self, data: list[dict]) -> list[dict]:
-        repaired_data = copy.deepcopy(data)
-        for i in range(1, len(repaired_data)):
-            if repaired_data[i]['timestamp'] <= repaired_data[i-1]['timestamp']:
-                # Suggest a repair by incrementing the timestamp
-                repaired_data[i]['timestamp'] = repaired_data[i-1]['timestamp'] + 1
-        return repaired_data
+        repaired = copy.deepcopy(data)
+
+        for i in range(1, len(repaired)):
+            if repaired[i]['timestamp'] <= repaired[i-1]['timestamp']:
+                repaired[i]['timestamp'] = repaired[i-1]['timestamp'] + 1
+
+        return repaired
+    
+class StatisticalOutlierRule(ValidationRule):
+    def __init__(self, z_threshold=3):
+        self.z_threshold = z_threshold
+
+    def validate(self, data):
+        prices = [d["price"] for d in data]
+        mean = sum(prices) / len(prices)
+        std = (sum((p - mean) ** 2 for p in prices) / len(prices)) ** 0.5
+
+        violations = []
+        for d in data:
+            z = abs(d["price"] - mean) / std if std else 0
+            if z > self.z_threshold:
+                violations.append({
+                    "type": "STATISTICAL_OUTLIER",
+                    "timestamp": d["timestamp"],
+                    "detail": f"Z-score {z:.2f}"
+                })
+
+        return violations
