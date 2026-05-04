@@ -13,9 +13,9 @@ def test_data_validator_perfect_data():
     
     result = validator.run(perfect_data)
     
-    assert result["status"] == "PASSED"
-    assert result["count"] == 0
-    assert result["violations"] == []
+    assert result.status == "PASSED"
+    assert result.count == 0
+    assert result.violations == []
 
 def test_data_validator_garbage_data():
     rules = [PriceSpikeRule(threshold_percent=0.10), MonotonicTimeRule()]
@@ -29,7 +29,7 @@ def test_data_validator_garbage_data():
     
     result = validator.run(garbage_data)
     
-    assert result["status"] == "FAILED"
-    assert result["count"] > 0
-    assert any(violation["type"] == "PRICE_SPIKE" for violation in result["violations"])
-    assert any(violation["type"] == "TIME_ORDER_ERROR" for violation in result["violations"])
+    assert result.status == "FAILED"
+    assert result.count > 0
+    assert any(violation["type"] == "PRICE_SPIKE" for violation in result.violations)
+    assert any(violation["type"] == "TIME_ORDER_ERROR" for violation in result.violations)
