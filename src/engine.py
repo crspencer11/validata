@@ -1,4 +1,6 @@
 import logging
+from typing import List
+from .models import ValidationResult, Violation
 
 class DataValidator:
     def __init__(self, rules=None, repair_mode=False):
@@ -6,29 +8,35 @@ class DataValidator:
         self.repair_mode = repair_mode
         self.logger = logging.getLogger(__name__)
 
-    def run(self, data: list[dict]):
-        all_violations = []
+    def run(self, data: List[dict]) -> ValidationResult:
+        all_violations: List[Violation] = []
+
         for rule in self.rules:
             self.logger.info(f"Running {rule.__class__.__name__}...")
             violations = rule.validate(data)
-            all_violations.extend(violations)
-        
+            all_violations.extend([
+                Violation(**v) for v in violations
+            ])
+
+        repaired_data = None
+
         if self.repair_mode:
-            self.logger.info("Repair mode is enabled. Attempting to repair data...")
-            data = self.repair_data(data, all_violations)
+            self.logger.info("Repair mode enabled")
+            repaired_data = self.apply_repairs(data)
 
-        return {
-            "status": "FAILED" if all_violations else "PASSED",
-            "count": len(all_violations),
-            "violations": all_violations,
-            "repaired_data": data if self.repair_mode else None
-        }
+        return ValidationResult(
+            status="FAILED" if all_violations else "PASSED",
+            violation_count=len(all_violations),
+            violations=all_violations,
+            repaired_data=repaired_data
+        )
 
-    def repair_data(self, data: list[dict], violations: list[dict]):
-        # Implement repair logic based on the violations
-        for violation in violations:
-            if violation['type'] == "PRICE_SPIKE":
-                # Example repair logic: interpolate or adjust prices
-                self.logger.info(f"Repairing price spike at {violation['timestamp']}")
-                # Actual repair logic would go here
-        return data  # Return the repaired data
+    def apply_repairs(self, data: List[dict]) -> List[dict]:
+        repaired = data.copy()
+
+        for rule in self.rules:
+            if hasattr(rule, "repair"):
+                self.logger.info(f"Applying repair from {rule.__class__.__name__}")
+                repaired = rule.repair(repaired)
+
+        return repaired
